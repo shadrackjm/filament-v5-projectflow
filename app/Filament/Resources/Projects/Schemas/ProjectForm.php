@@ -4,16 +4,21 @@ namespace App\Filament\Resources\Projects\Schemas;
 
 use App\Enums\Priority;
 use App\Enums\ProjectStatus;
+use App\Models\Client;
+use Carbon\CarbonImmutable;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Str;
 
 class ProjectForm
 {
@@ -32,12 +37,27 @@ class ProjectForm
                             ->schema([
                                 TextInput::make('name')
                                     ->required()
-                                    ->maxLength(255),
+                                    ->maxLength(255)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (Set $set, ?string $state, string $operation): void {
+                                        if ($operation !== 'create') {
+                                            return;
+                                        }
+
+                                        $set('slug', Str::slug($state ?? ''));
+                                    }),
                                 TextInput::make('slug')
                                     ->required()
-                                    ->maxLength(255),
-                                Textarea::make('description')
-                                    ->rows(5)
+                                    ->maxLength(255)
+                                    ->alphaDash()
+                                    ->unique(ignoreRecord: true)
+                                    ->helperText('Used in URLs. Generated from the name, but you can override it.'),
+                                RichEditor::make('description')
+                                    ->toolbarButtons([
+                                        ['bold', 'italic', 'strike', 'link'],
+                                        ['h2', 'h3', 'bulletList', 'orderedList'],
+                                        ['undo', 'redo'],
+                                    ])
                                     ->columnSpanFull(),
                             ]),
 
@@ -52,7 +72,20 @@ class ProjectForm
                                 DatePicker::make('due_at')
                                     ->label('Due date')
                                     ->native(false)
-                                    ->afterOrEqual('starts_at'),
+                                    ->displayFormat('d M Y')
+                                    ->afterOrEqual('starts_at')
+                                    ->live()
+                                    ->helperText(function (Get $get): ?string {
+                                        $start = $get('starts_at');
+                                        $due = $get('due_at');
+
+                                        if (blank($start) || blank($due)) {
+                                            return null;
+                                        }
+
+                                        return 'That is '.CarbonImmutable::parse($start)
+                                            ->diffInDays(CarbonImmutable::parse($due)).' days of runway.';
+                                    }),
                                 TextInput::make('budget')
                                     ->numeric()
                                     ->prefix('$')
@@ -68,14 +101,29 @@ class ProjectForm
                             ->schema([
                                 Select::make('team_id')
                                     ->relationship('team', 'name')
+                                    ->native(false)
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set): void {
+                                        $set('client_id', null);
+                                        $set('lead_id', null);
+                                    }),
                                 Select::make('client_id')
                                     ->label('Client')
-                                    ->relationship('client', 'name')
+                                    ->native(false)
                                     ->searchable()
-                                    ->preload(),
+                                    ->options(fn (Get $get): array => Client::query()
+                                        ->where('team_id', $get('team_id'))
+                                        ->where('is_active', true)
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id')
+                                        ->all())
+                                    ->disabled(fn (Get $get): bool => blank($get('team_id')))
+                                    ->helperText(fn (Get $get): ?string => blank($get('team_id'))
+                                        ? 'Pick a team first.'
+                                        : null),
                                 Select::make('lead_id')
                                     ->label('Project lead')
                                     ->relationship('lead', 'name')

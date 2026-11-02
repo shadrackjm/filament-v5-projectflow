@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Clients\Schemas;
 
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -26,6 +27,18 @@ class ClientForm
                             ->autofocus()
                             ->placeholder('Acme Corporation')
                             ->columnSpanFull(),
+
+                        FileUpload::make('avatar_path')
+                            ->label('Logo')
+                            ->image()
+                            ->avatar()
+                            ->imageEditor()
+                            ->circleCropper()
+                            ->disk('public')
+                            ->directory('client-logos')
+                            ->maxSize(2048)
+                            ->columnSpanFull(),
+
                         Select::make('team_id')
                             ->label('Owned by team')
                             ->relationship('team', 'name')
