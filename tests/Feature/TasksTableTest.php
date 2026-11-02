@@ -58,3 +58,30 @@ it('toggles is_billable inline', function () {
 
     expect($task->refresh()->is_billable)->toBeFalse();
 });
+
+it('filters down to tasks assigned to the signed-in user', function () {
+    $mine = Task::factory()->create([
+        'project_id' => $this->project->id,
+        'assignee_id' => $this->admin->id,
+    ]);
+
+    $theirs = Task::factory()->create([
+        'project_id' => $this->project->id,
+        'assignee_id' => User::factory()->create()->id,
+    ]);
+
+    Livewire::test(ListTasks::class)
+        ->loadTable()
+        ->filterTable('mine')
+        ->assertCanSeeTableRecords([$mine])
+        ->assertCanNotSeeTableRecords([$theirs]);
+});
+
+it('groups tasks by project', function () {
+    Task::factory()->count(2)->create(['project_id' => $this->project->id]);
+
+    Livewire::test(ListTasks::class)
+        ->loadTable()
+        ->set('tableGrouping', 'project.name')
+        ->assertSee($this->project->name);
+});

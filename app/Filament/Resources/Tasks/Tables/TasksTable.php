@@ -1,7 +1,7 @@
 <?php
-
 namespace App\Filament\Resources\Tasks\Tables;
 
+use App\Enums\Priority;
 use App\Enums\TaskStatus;
 use App\Models\Task;
 use Filament\Actions\BulkActionGroup;
@@ -17,9 +17,14 @@ use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class TasksTable
 {
@@ -28,6 +33,8 @@ class TasksTable
         return $table
             ->defaultSort('due_at')
             ->deferLoading()
+            ->persistFiltersInSession()
+            ->filtersLayout(FiltersLayout::AboveContentCollapsible)
             ->groups([
                 Group::make('project.name')->label('Project')->collapsible(),
                 Group::make('status')->collapsible(),
@@ -89,6 +96,37 @@ class TasksTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('status')
+                    ->options(TaskStatus::class)
+                    ->multiple(),
+
+                SelectFilter::make('priority')
+                    ->options(Priority::class)
+                    ->multiple(),
+
+                SelectFilter::make('project')
+                    ->relationship('project', 'name')
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('assignee')
+                    ->relationship('assignee', 'name')
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('tags')
+                    ->relationship('tags', 'name')
+                    ->multiple()
+                    ->preload(),
+
+                TernaryFilter::make('is_billable')
+                    ->label('Billable'),
+
+                Filter::make('mine')
+                    ->label('Assigned to me')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query->where('assignee_id', auth()->id())),
+
                 TrashedFilter::make(),
             ])
             ->recordActions([
