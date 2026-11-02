@@ -4,12 +4,23 @@ namespace App\Filament\Resources\Tasks\Tables;
 use App\Enums\Priority;
 use App\Enums\TaskStatus;
 use App\Models\Task;
+use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\SelectColumn;
@@ -25,6 +36,7 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class TasksTable
 {
@@ -130,10 +142,87 @@ class TasksTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                Action::make('logTime')
+                    ->label('Log time')
+                    ->icon(Heroicon::OutlinedClock)
+                    ->iconButton()
+                    ->modalWidth(Width::Medium)
+                    ->schema([
+                        TextInput::make('minutes')
+                            ->numeric()
+                            ->minValue(1)
+                            ->suffix('min')
+                            ->required()
+                            ->default(30),
+                        DatePicker::make('logged_on')
+                            ->native(false)
+                            ->default(today())
+                            ->required(),
+                        TextInput::make('notes')
+                            ->maxLength(255),
+                    ])
+                    ->action(function (Task $record, array $data): void {
+                        $record->timeLogs()->create([
+                            'user_id' => auth()->id(),
+                            'minutes' => $data['minutes'],
+                            'logged_on' => $data['logged_on'],
+                            'notes' => $data['notes'] ?? null,
+                        ]);
+
+                        Notification::make()
+                            ->title('Time logged')
+                            ->body(round($data['minutes'] / 60, 2).' hours added to '.$record->title)
+                            ->success()
+                            ->send();
+                    }),
+
+                ActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
+                BulkAction::make('assign')
+                    ->label('Assign to…')
+                    ->icon(Heroicon::OutlinedUserPlus)
+                    ->schema([
+                        Select::make('assignee_id')
+                            ->label('Assignee')
+                            ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
+                            ->native(false)
+                            ->searchable()
+                            ->required(),
+                    ])
+                    ->action(function (Collection $records, array $data): void {
+                        $records->each->update(['assignee_id' => $data['assignee_id']]);
+
+                        Notification::make()
+                            ->title('Tasks reassigned')
+                            ->body($records->count().' tasks are now with '.User::find($data['assignee_id'])->name.'.')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
+
+                BulkAction::make('markDone')
+                    ->label('Mark done')
+                    ->icon(Heroicon::OutlinedCheck)
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->action(function (Collection $records): void {
+                        $records->each->update([
+                            'status' => TaskStatus::Done,
+                            'completed_at' => now(),
+                        ]);
+
+                        Notification::make()
+                            ->title($records->count().' tasks completed')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
+
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                     ForceDeleteBulkAction::make(),

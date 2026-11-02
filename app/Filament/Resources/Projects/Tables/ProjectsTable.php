@@ -3,15 +3,25 @@ namespace App\Filament\Resources\Projects\Tables;
 
 use App\Enums\Priority;
 use App\Enums\ProjectStatus;
+use App\Filament\Exports\ProjectExporter;
 use App\Models\Project;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
 use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\ReplicateAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -21,7 +31,9 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class ProjectsTable
 {
@@ -165,11 +177,74 @@ class ProjectsTable
                         return $indicators;
                     }),
             ])
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(ProjectExporter::class)
+                    ->label('Export CSV'),
+            ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                ActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+
+                    Action::make('complete')
+                        ->label('Mark completed')
+                        ->icon(Heroicon::OutlinedCheckCircle)
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading('Mark this project completed?')
+                        ->modalDescription('Any tasks still open will stay open — this only changes the project status.')
+                        ->modalSubmitActionLabel('Yes, complete it')
+                        ->visible(fn (Project $record): bool => $record->status !== ProjectStatus::Completed)
+                        ->action(function (Project $record): void {
+                            $record->update(['status' => ProjectStatus::Completed]);
+
+                            Notification::make()
+                                ->title('Project completed')
+                                ->body("{$record->name} is done. Nice work.")
+                                ->success()
+                                ->send();
+                        }),
+
+                    Action::make('archive')
+                        ->label(fn (Project $record): string => $record->is_archived ? 'Unarchive' : 'Archive')
+                        ->icon(Heroicon::OutlinedArchiveBox)
+                        ->color('gray')
+                        ->action(fn (Project $record) => $record->update(['is_archived' => ! $record->is_archived])),
+
+                    ReplicateAction::make()
+                        ->excludeAttributes(['slug', 'tasks_count'])
+                        ->beforeReplicaSaved(function (Project $replica, Project $record): void {
+                            $replica->name = $record->name.' (copy)';
+                            $replica->slug = $record->slug.'-copy-'.Str::random(4);
+                            $replica->status = ProjectStatus::Planning;
+                        })
+                        ->successNotificationTitle('Project duplicated'),
+
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
+                BulkAction::make('setStatus')
+                    ->label('Change status')
+                    ->icon(Heroicon::OutlinedArrowPath)
+                    ->schema([
+                        Select::make('status')
+                            ->options(ProjectStatus::class)
+                            ->native(false)
+                            ->required(),
+                    ])
+                    ->action(function (Collection $records, array $data): void {
+                        $records->each->update(['status' => $data['status']]);
+
+                        Notification::make()
+                            ->title('Status updated')
+                            ->body($records->count().' projects moved to '.$data['status']->getLabel().'.')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
+
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                     ForceDeleteBulkAction::make(),
