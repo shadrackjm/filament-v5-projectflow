@@ -2,13 +2,17 @@
 
 namespace App\Filament\Resources\Projects\Tables;
 
+use App\Enums\ProjectStatus;
+use App\Models\Project;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
-use Filament\Tables\Columns\IconColumn;
+use Filament\Support\Enums\FontWeight;
+use Filament\Tables\Columns\ColorColumn;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -18,48 +22,84 @@ class ProjectsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->defaultSort('due_at')
+            ->striped()
             ->columns([
-                TextColumn::make('team.name')
-                    ->searchable(),
-                TextColumn::make('client.name')
-                    ->searchable(),
-                TextColumn::make('lead.name')
-                    ->searchable(),
+                ColorColumn::make('color')
+                    ->label('')
+                    ->width('1%'),
+
                 TextColumn::make('name')
-                    ->searchable(),
-                TextColumn::make('slug')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable()
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn (Project $record): string => $record->client?->name ?? 'No client')
+                    ->wrap(),
+
                 TextColumn::make('status')
                     ->badge()
-                    ->searchable(),
+                    ->sortable(),
+
                 TextColumn::make('priority')
                     ->badge()
-                    ->searchable(),
-                TextColumn::make('color')
-                    ->searchable(),
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('lead.name')
+                    ->label('Lead')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('Unassigned')
+                    ->toggleable(),
+
+                TextColumn::make('tasks_count')
+                    ->label('Tasks')
+                    ->counts('tasks')
+                    ->badge()
+                    ->color('gray')
+                    ->sortable(),
+
+                TextColumn::make('progress')
+                    ->label('Done')
+                    ->state(function (Project $record): string {
+                        $total = $record->tasks()->count();
+
+                        if ($total === 0) {
+                            return '—';
+                        }
+
+                        $done = $record->tasks()->whereNotNull('completed_at')->count();
+
+                        return round($done / $total * 100).'%';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match (true) {
+                        $state === '—' => 'gray',
+                        (int) $state >= 80 => 'success',
+                        (int) $state >= 40 => 'warning',
+                        default => 'danger',
+                    })
+                    ->toggleable(),
+
                 TextColumn::make('budget')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('starts_at')
-                    ->date()
-                    ->sortable(),
+                    ->money('USD')
+                    ->sortable()
+                    ->alignEnd()
+                    ->summarize(Sum::make()->money('USD')->label('Total'))
+                    ->toggleable(),
+
                 TextColumn::make('due_at')
-                    ->date()
-                    ->sortable(),
-                IconColumn::make('is_archived')
-                    ->boolean(),
-                TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Due')
+                    ->date('d M Y')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('deleted_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->badge()
+                    ->color(fn (Project $record): string => match (true) {
+                        blank($record->due_at) => 'gray',
+                        $record->due_at->isPast() && $record->status !== ProjectStatus::Completed => 'danger',
+                        $record->due_at->diffInDays(now()) <= 14 => 'warning',
+                        default => 'gray',
+                    })
+                    ->description(fn (Project $record): ?string => $record->due_at?->diffForHumans()),
             ])
             ->filters([
                 TrashedFilter::make(),
