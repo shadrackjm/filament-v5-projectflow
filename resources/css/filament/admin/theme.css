@@ -1,0 +1,45 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --radius-lg: 0.625rem;
+}
+
+/* A slightly heavier sidebar so the content area reads as the focus. */
+.fi-sidebar {
+    background-color: var(--color-gray-50);
+}
+
+.dark .fi-sidebar {
+    background-color: color-mix(in oklab, var(--color-gray-900) 80%, black);
+}
+
+/* Group headings: small, quiet, unmistakably a heading. */
+.fi-sidebar-group-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.6;
+}
+
+/* Table rows get a subtle hover, which makes long tables easier to track. */
+.fi-ta-row:hover {
+    background-color: color-mix(in oklab, var(--color-primary-500) 6%, transparent);
+}
+
+/* Our own class, used by the environment banner in section 3. */
+.projectflow-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: white;
+    background-color: var(--color-primary-600);
+}
