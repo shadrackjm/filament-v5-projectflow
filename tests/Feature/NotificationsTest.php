@@ -8,12 +8,9 @@ use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->admin = User::factory()->create(['is_admin' => true, 'name' => 'Ada Lovelace']);

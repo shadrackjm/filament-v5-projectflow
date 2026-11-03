@@ -6,9 +6,6 @@ use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));

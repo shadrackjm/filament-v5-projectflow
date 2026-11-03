@@ -5,9 +5,6 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('redirects guests to the login page', function () {
     $this->get('/admin')->assertRedirect('/admin/login');
