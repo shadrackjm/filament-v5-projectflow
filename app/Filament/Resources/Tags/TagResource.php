@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tags;
 
+use App\Filament\Clusters\Administration\AdministrationCluster;
 use App\Filament\Resources\Tags\Pages\ManageTags;
 use App\Models\Tag;
 use BackedEnum;
@@ -22,6 +23,10 @@ class TagResource extends Resource
     protected static ?string $model = Tag::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
+
+    protected static ?string $cluster = AdministrationCluster::class;
+
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $recordTitleAttribute = 'name';
 

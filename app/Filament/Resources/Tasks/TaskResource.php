@@ -19,6 +19,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use UnitEnum;
 
 class TaskResource extends Resource
 {
@@ -26,7 +27,31 @@ class TaskResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
+    protected static string|BackedEnum|null $activeNavigationIcon = Heroicon::ClipboardDocumentList;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Delivery';
+
+    protected static ?int $navigationSort = 2;
+
     protected static ?string $recordTitleAttribute = 'title';
+
+    public static function getNavigationBadge(): ?string
+    {
+        return Task::query()
+            ->whereDate('due_at', '<', now())
+            ->whereNull('completed_at')
+            ->count() ?: null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'danger';
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Tasks past their due date';
+    }
 
     public static function form(Schema $schema): Schema
     {

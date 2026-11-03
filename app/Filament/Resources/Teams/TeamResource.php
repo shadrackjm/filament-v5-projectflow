@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Teams;
 
+use App\Filament\Clusters\Administration\AdministrationCluster;
 use App\Filament\Resources\Teams\Pages\CreateTeam;
 use App\Filament\Resources\Teams\Pages\EditTeam;
 use App\Filament\Resources\Teams\Pages\ListTeams;
@@ -22,6 +23,10 @@ class TeamResource extends Resource
     protected static ?string $model = Team::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
+
+    protected static ?string $cluster = AdministrationCluster::class;
+
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'name';
 

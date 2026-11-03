@@ -7,10 +7,13 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -52,7 +55,23 @@ class AdminPanelProvider extends PanelProvider
             ->spa()
             ->unsavedChangesAlerts()
             ->databaseTransactions()
+            ->navigationGroups([
+                NavigationGroup::make('Delivery')
+                    ->icon(Heroicon::OutlinedRocketLaunch),
+                NavigationGroup::make('System')
+                    ->icon(Heroicon::OutlinedCog6Tooth)
+                    ->collapsed(),
+            ])
+            ->navigationItems([
+                NavigationItem::make('Filament docs')
+                    ->url('https://filamentphp.com/docs', shouldOpenInNewTab: true)
+                    ->icon(Heroicon::OutlinedBookOpen)
+                    ->group('System')
+                    ->sort(100),
+            ])
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
+            ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\Filament\Clusters')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')

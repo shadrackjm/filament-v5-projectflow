@@ -34,9 +34,11 @@ it('lets an admin reach the dashboard and every resource index', function () {
         '/admin/projects',
         '/admin/clients',
         '/admin/tasks',
-        '/admin/teams',
-        '/admin/users',
-        '/admin/tags',
+        '/admin/settings',
+        // clustered resources live under the cluster's path
+        '/admin/administration/users',
+        '/admin/administration/tags',
+        '/admin/administration/teams',
     ])->each(fn (string $url) => $this->get($url)->assertOk());
 });
 
@@ -58,9 +60,16 @@ it('renders every create, view and edit page', function () {
         '/admin/tasks/create',
         "/admin/tasks/{$task->id}",
         "/admin/tasks/{$task->id}/edit",
-        '/admin/teams/create',
-        "/admin/teams/{$team->id}/edit",
+        '/admin/administration/teams/create',
+        "/admin/administration/teams/{$team->id}/edit",
     ])->each(fn (string $url) => $this->get($url)->assertOk());
+});
+
+it('redirects the cluster root to its first page', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+
+    $this->get('/admin/administration')
+        ->assertRedirect('/admin/administration/teams');
 });
 
 it('renders the nested task create page under a project', function () {
