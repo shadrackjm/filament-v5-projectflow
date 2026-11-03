@@ -72,7 +72,6 @@ class ProjectsTable
 
                 TextColumn::make('tasks_count')
                     ->label('Tasks')
-                    ->counts('tasks')
                     ->badge()
                     ->color('gray')
                     ->sortable(),
@@ -80,15 +79,14 @@ class ProjectsTable
                 TextColumn::make('progress')
                     ->label('Done')
                     ->state(function (Project $record): string {
-                        $total = $record->tasks()->count();
+                        // Both counts come from the resource's withCount() — no per-row queries.
+                        $total = (int) ($record->tasks_count ?? 0);
 
                         if ($total === 0) {
                             return '—';
                         }
 
-                        $done = $record->tasks()->whereNotNull('completed_at')->count();
-
-                        return round($done / $total * 100).'%';
+                        return round(((int) ($record->completed_tasks_count ?? 0)) / $total * 100).'%';
                     })
                     ->badge()
                     ->color(fn (string $state): string => match (true) {
@@ -213,7 +211,7 @@ class ProjectsTable
                         ->action(fn (Project $record) => $record->update(['is_archived' => ! $record->is_archived])),
 
                     ReplicateAction::make()
-                        ->excludeAttributes(['slug', 'tasks_count'])
+                        ->excludeAttributes(['slug', 'tasks_count', 'completed_tasks_count'])
                         ->beforeReplicaSaved(function (Project $replica, Project $record): void {
                             $replica->name = $record->name.' (copy)';
                             $replica->slug = $record->slug.'-copy-'.Str::random(4);

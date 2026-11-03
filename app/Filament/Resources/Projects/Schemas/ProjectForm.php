@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Projects\Schemas;
 use App\Enums\Priority;
 use App\Enums\ProjectStatus;
 use App\Models\Client;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
@@ -168,12 +169,33 @@ class ProjectForm
                 ->disabled(fn (Get $get): bool => blank($get('team_id')))
                 ->helperText(fn (Get $get): ?string => blank($get('team_id'))
                     ? 'Pick a team first.'
-                    : null),
+                    : null)
+                ->createOptionForm([
+                    TextInput::make('name')
+                        ->label('Company name')
+                        ->required()
+                        ->maxLength(255),
+                    TextInput::make('email')
+                        ->email()
+                        ->maxLength(255),
+                ])
+                ->createOptionUsing(function (array $data, Get $get): int {
+                    return Client::create([
+                        ...$data,
+                        'team_id' => $get('team_id'),
+                        'is_active' => true,
+                    ])->getKey();
+                }),
             Select::make('lead_id')
                 ->label('Project lead')
-                ->relationship('lead', 'name')
+                ->native(false)
                 ->searchable()
-                ->preload(),
+                ->options(fn (Get $get): array => User::query()
+                    ->whereHas('teams', fn ($query) => $query->whereKey($get('team_id')))
+                    ->orderBy('name')
+                    ->pluck('name', 'id')
+                    ->all())
+                ->disabled(fn (Get $get): bool => blank($get('team_id'))),
         ];
     }
 

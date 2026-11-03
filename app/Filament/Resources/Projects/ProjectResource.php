@@ -59,6 +59,19 @@ class ProjectResource extends Resource
         ];
     }
 
+    /**
+     * Everything the list table renders, eager-loaded once instead of per row.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['client', 'lead'])
+            ->withCount([
+                'tasks',
+                'tasks as completed_tasks_count' => fn (Builder $query) => $query->whereNotNull('completed_at'),
+            ]);
+    }
+
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {
         return parent::getRecordRouteBindingEloquentQuery()
