@@ -27,11 +27,14 @@ class TeamPolicy
     }
 
     /**
-     * New teams are set up by staff — the before() hook lets admins through.
+     * Filament checks this before letting anyone reach the tenant registration
+     * page, so denying it here also removes "Start a new team" from the app panel.
+     * Any signed-in user may start a team; what they can do inside one is decided
+     * by their pivot role.
      */
     public function create(User $user): bool
     {
-        return false;
+        return true;
     }
 
     public function update(User $user, Team $team): bool
