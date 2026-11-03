@@ -27,6 +27,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->brandName('ProjectFlow')
             // ->brandLogo(asset('images/logo.svg'))
             // ->brandLogoHeight('2rem')

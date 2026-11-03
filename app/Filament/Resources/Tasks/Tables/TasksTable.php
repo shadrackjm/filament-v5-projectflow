@@ -5,6 +5,7 @@ use App\Enums\Priority;
 use App\Enums\TaskStatus;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskAssigned;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -195,11 +196,18 @@ class TasksTable
                             ->required(),
                     ])
                     ->action(function (Collection $records, array $data): void {
-                        $records->each->update(['assignee_id' => $data['assignee_id']]);
+                        $assignee = User::findOrFail($data['assignee_id']);
+
+                        $records->each->update(['assignee_id' => $assignee->id]);
+
+                        // Tell the person who now owns the work, not just the person who moved it.
+                        $records->each(fn (Task $task) => $assignee->notify(
+                            new TaskAssigned($task->load('project'), auth()->user())
+                        ));
 
                         Notification::make()
                             ->title('Tasks reassigned')
-                            ->body($records->count().' tasks are now with '.User::find($data['assignee_id'])->name.'.')
+                            ->body($records->count().' tasks are now with '.$assignee->name.'.')
                             ->success()
                             ->send();
                     })
