@@ -9,18 +9,20 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-/*
- * Until episode 16 gives User the FilamentUser contract, Filament only lets users
- * into the panel when the app environment is "local" — and tests run as "testing".
- */
-beforeEach(fn () => config(['app.env' => 'local']));
-
 it('redirects guests to the login page', function () {
     $this->get('/admin')->assertRedirect('/admin/login');
 });
 
 it('renders the login page', function () {
     $this->get('/admin/login')->assertOk();
+});
+
+it('renders the password reset and profile pages', function () {
+    $this->get('/admin/password-reset/request')->assertOk();
+
+    $this->actingAs(User::factory()->create(['is_admin' => true]))
+        ->get('/admin/profile')
+        ->assertOk();
 });
 
 it('lets an admin reach the dashboard and every resource index', function () {

@@ -186,6 +186,8 @@ class ProjectsTable
                     EditAction::make(),
 
                     Action::make('complete')
+                        ->authorize('update')
+                        ->authorizationTooltip()
                         ->label('Mark completed')
                         ->icon(Heroicon::OutlinedCheckCircle)
                         ->color('success')
@@ -205,6 +207,8 @@ class ProjectsTable
                         }),
 
                     Action::make('archive')
+                        ->authorize('update')
+                        ->authorizationTooltip()
                         ->label(fn (Project $record): string => $record->is_archived ? 'Unarchive' : 'Archive')
                         ->icon(Heroicon::OutlinedArchiveBox)
                         ->color('gray')

@@ -67,6 +67,7 @@ class TasksTable
                     ->description(fn (Task $record): ?string => $record->project?->name),
 
                 SelectColumn::make('status')
+                    ->disabled(fn (Task $record): bool => auth()->user()->cannot('update', $record))
                     ->options(TaskStatus::class)
                     ->selectablePlaceholder(false)
                     ->rules(['required'])
@@ -78,6 +79,7 @@ class TasksTable
                     ->toggleable(),
 
                 TextInputColumn::make('estimated_hours')
+                    ->disabled(fn (Task $record): bool => auth()->user()->cannot('update', $record))
                     ->label('Est.')
                     ->type('number')
                     ->rules(['numeric', 'min:0'])
@@ -92,6 +94,7 @@ class TasksTable
                     ->toggleable(),
 
                 ToggleColumn::make('is_billable')
+                    ->disabled(fn (Task $record): bool => auth()->user()->cannot('update', $record))
                     ->label('Billable')
                     ->toggleable(),
 
